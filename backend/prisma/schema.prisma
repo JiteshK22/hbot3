@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  RIDER
+  WORKSHOP
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  PICKUP_ASSIGNED
+  PICKED
+  PROCESSING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  ISSUE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  phone        String   @unique
+  email        String?  @unique
+  role         Role
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Customer {
+  id            String   @id @default(uuid())
+  name          String
+  phone         String   @unique
+  address       String
+  tier          String   @default("SILVER")
+  lifetimeValue Float    @default(0)
+  createdAt     DateTime @default(now())
+  orders        Order[]
+  subscriptions Subscription[]
+}
+
+model Rider {
+  id         String   @id @default(uuid())
+  name       String
+  phone      String   @unique
+  status     String   @default("AVAILABLE")
+  locationLat Float?
+  locationLng Float?
+  orders     Order[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  customerId  String
+  riderId     String?
+  status      OrderStatus @default(PENDING)
+  totalAmount Float
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  rider       Rider?      @relation(fields: [riderId], references: [id])
+  items       OrderItem[]
+  tracking    OrderTracking[]
+  payments    Payment[]
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  productId String
+  name      String
+  qty       Int
+  price     Float
+  order     Order  @relation(fields: [orderId], references: [id])
+}
+
+model OrderTracking {
+  id        String   @id @default(uuid())
+  orderId   String
+  stage     String
+  updatedBy String
+  timestamp DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+model Payment {
+  id       String   @id @default(uuid())
+  orderId  String
+  amount   Float
+  method   String
+  status   String
+  createdAt DateTime @default(now())
+  order    Order    @relation(fields: [orderId], references: [id])
+}
+
+model Subscription {
+  id         String   @id @default(uuid())
+  customerId String
+  plan       String
+  credits    Int
+  expiryDate DateTime
+  customer   Customer @relation(fields: [customerId], references: [id])
+}
